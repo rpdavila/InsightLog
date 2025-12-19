@@ -1,11 +1,11 @@
 # Known Bugs and Replication Steps
-
+## DONE
 ## 1. filter_data returns None on error instead of raising
 - **How to replicate:**
   - Call `filter_data` with a non-existent file path.
   - Instead of raising an exception, it prints the error and returns None.
   - This makes error handling inconsistent with the rest of the codebase which uses exceptions.
-  - 
+## DONE
 ## 2. No check for file encoding
 - **How to replicate:**
   - Try to analyze a log file with non-UTF-8 encoding (e.g., ISO-8859-1, Windows-1252).
