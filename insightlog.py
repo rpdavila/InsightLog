@@ -144,7 +144,6 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
             return return_data
         except (IOError, EnvironmentError) as e:
             print(e.strerror)
-            return None
     elif data:
         for line in data.splitlines():
             if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
