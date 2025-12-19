@@ -144,6 +144,8 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
             return return_data
         except (IOError, EnvironmentError) as e:
             print(e.strerror)
+        except UnicodeDecodeError as e:
+            print(e.args[0])
     elif data:
         for line in data.splitlines():
             if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
@@ -234,7 +236,9 @@ def apply_filters(filters, data=None, filepath=None):
                 return ''.join(filtered_lines)
         except (IOError, EnvironmentError) as e:
             print(e.strerror)
-            return None
+        except UnicodeDecodeError as e:
+            print(e.args[0])
+
     elif data:
         filtered_lines = []
         for line in data.splitlines():
@@ -274,7 +278,8 @@ def get_requests(service, data=None, filepath=None, filters=None):
                     filtered_data = f.read()
             except (IOError, EnvironmentError) as e:
                 print(e.strerror)
-                return None
+            except UnicodeDecodeError as e:
+                print(e.args[0])
         else:
             filtered_data = data
     
