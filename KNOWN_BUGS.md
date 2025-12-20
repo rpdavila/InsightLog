@@ -12,6 +12,8 @@
   - The code opens files without specifying encoding, defaulting to UTF-8.
   - May crash with a `UnicodeDecodeError` when encountering non-UTF-8 characters.
 
+### Only raises an error hour=* and a specific minute was given.
+### DONE.
 ## 3. Type inconsistency in get_date_filter function
 - **How to replicate:**
   - Call `get_date_filter()` with `minute='*'` or `hour='*'` as strings.

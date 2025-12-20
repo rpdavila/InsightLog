@@ -112,6 +112,9 @@ def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().
     elif minute == '*' and hour != '*':
         date_format = settings['datehours_format']
         date_filter = datetime(year, month, day, hour).strftime(date_format)
+    elif minute != '*' and hour == '*':
+        date_format = settings['datedays_format']
+        date_filter = datetime(year, month, day).strftime(date_format)
     elif minute == '*' and hour == '*':
         date_format = settings['datedays_format']
         date_filter = datetime(year, month, day).strftime(date_format)
