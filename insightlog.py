@@ -59,7 +59,7 @@ SERVICES_SWITCHER = {
     'auth': DEFAULT_AUTH
 }
 
-IPv4_REGEX = r'(\d+.\d+.\d+.\d+)'
+IPv4_REGEX = r'(\d+\.\d+\.\d+\.\d+)'
 AUTH_USER_INVALID_USER = r'(?i)invalid\suser\s(\w+)\s'
 AUTH_PASS_INVALID_USER = r'(?i)failed\spassword\sfor\s(\w+)\s'
 
@@ -126,8 +126,8 @@ def get_date_filter(settings, minute=datetime.now().minute, hour=datetime.now().
 def check_match(line, filter_pattern, is_regex=False, is_casesensitive=True, is_reverse=False):
     """Check if line contains/matches filter pattern"""
     if is_regex:
-        check_result = re.match(filter_pattern, line) if is_casesensitive \
-            else re.match(filter_pattern, line, re.IGNORECASE)
+        check_result = re.search(filter_pattern, line) if is_casesensitive \
+            else re.search(filter_pattern, line, re.IGNORECASE)
     else:
         check_result = (filter_pattern in line) if is_casesensitive else (filter_pattern.lower() in line.lower())
     if is_reverse:
@@ -140,13 +140,13 @@ def filter_data(log_filter, data=None, filepath=None, is_casesensitive=True, is_
     return_data = ""
     if filepath:
         try:
-            with open(filepath, 'r') as file_object:
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as file_object:
                 for line in file_object:
                     if check_match(line, log_filter, is_regex, is_casesensitive, is_reverse):
                         return_data += line
             return return_data
         except (IOError, EnvironmentError) as e:
-            print(e.strerror)
+            raise e
         except UnicodeDecodeError as e:
             print(e.reason)
     elif data:
@@ -165,18 +165,54 @@ def _get_iso_datetime(str_date, pattern, keys):
     if not matches:
         raise ValueError(f"Date pattern '{pattern}' did not match '{str_date}'")
     a_date = matches[0]
-    d_datetime = datetime(int(a_date[keys['year']]) if 'year' in keys else _get_auth_year(),
-                          months_dict[a_date[keys['month']]], int(a_date[keys['day']].strip()),
-                          int(a_date[keys['hour']]), int(a_date[keys['minute']]), int(a_date[keys['second']]))
+    
+    # Parse date components
+    month = months_dict[a_date[keys['month']]]
+    day = int(a_date[keys['day']].strip())
+    hour = int(a_date[keys['hour']])
+    minute = int(a_date[keys['minute']])
+    second = int(a_date[keys['second']])
+    
+    # Determine year - use improved logic if year is not in keys
+    if 'year' in keys:
+        year = int(a_date[keys['year']])
+    else:
+        # Create a temporary datetime with current year to check if it's in the future
+        current_year = datetime.now().year
+        try:
+            temp_datetime = datetime(current_year, month, day, hour, minute, second)
+            year = _get_auth_year(temp_datetime)
+        except ValueError:
+            # Handle leap year edge cases
+            year = _get_auth_year()
+    
+    d_datetime = datetime(year, month, day, hour, minute, second)
     return d_datetime.isoformat(' ')
 
 
-def _get_auth_year():
+def _get_auth_year(log_date_parsed=None):
     """Return the year when the requests happened"""
-    if datetime.now().month == 1 and datetime.now().day == 1 and datetime.now().hour == 0:
-        return datetime.now().year - 1
+    current_date = datetime.now()
+    current_year = current_date.year
+    
+    # If log_date_parsed is provided, use future date detection
+    if log_date_parsed is not None:
+        # Try with current year first
+        try:
+            log_with_current_year = log_date_parsed.replace(year=current_year)
+            days_ahead = (log_with_current_year - current_date).days
+            # If the date is more than 180 days in the future, assume it's from last year
+            if days_ahead > 180:
+                return current_year - 1
+        except ValueError:
+            # Handle leap year edge cases (Feb 29)
+            pass
+    
+    # Fallback to original logic for backward compatibility
+    if current_date.month == 1 and current_date.day == 1 and current_date.hour == 0:
+        return current_year - 1
     else:
-        return datetime.now().year
+        return current_year
 
 
 def get_web_requests(data, pattern, date_pattern=None, date_keys=None):
@@ -231,7 +267,7 @@ def apply_filters(filters, data=None, filepath=None):
     """Apply all filters to data or file and return filtered results"""
     if filepath:
         try:
-            with open(filepath, 'r') as file_object:
+            with open(filepath, 'r', encoding='utf-8', errors='replace') as file_object:
                 filtered_lines = []
                 for line in file_object:
                     if check_all_matches(line, filters):
@@ -239,8 +275,10 @@ def apply_filters(filters, data=None, filepath=None):
                 return ''.join(filtered_lines)
         except (IOError, EnvironmentError) as e:
             print(e.strerror)
+            return ""
         except UnicodeDecodeError as e:
             print(e.reason)
+            return ""
 
     elif data:
         filtered_lines = []
@@ -274,15 +312,19 @@ def get_requests(service, data=None, filepath=None, filters=None):
     # Apply filters if provided
     if filters:
         filtered_data = apply_filters(filters, data=data, filepath=filepath)
+        if filtered_data is None:
+            filtered_data = ""
     else:
         if filepath:
             try:
-                with open(filepath, 'r') as f:
+                with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                     filtered_data = f.read()
             except (IOError, EnvironmentError) as e:
                 print(e.strerror)
+                filtered_data = ""
             except UnicodeDecodeError as e:
                 print(e.reason)
+                filtered_data = ""
         else:
             filtered_data = data
     
